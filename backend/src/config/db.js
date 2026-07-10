@@ -1,4 +1,12 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
+
+// Configure Node's DNS resolver to use public DNS servers to prevent querySrv ECONNREFUSED
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {
+  console.warn('Warning: Failed to set custom DNS servers:', e.message);
+}
 
 function buildMongoUri() {
   if (process.env.MONGODB_URI && !process.env.MONGODB_USER) {
