@@ -69,6 +69,56 @@ export async function createComplaint(req, res, next) {
   }
 }
 
+export async function updateComplaint(req, res, next) {
+  try {
+    const { title, description, category, location, photoUrl } = req.body;
+    const complaint = await Complaint.findById(req.params.id);
+
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Complaint not found.' });
+    }
+
+    // Only allow citizen to edit their own complaint
+    if (complaint.citizenId.toString() !== req.userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only edit your own complaints.',
+      });
+    }
+
+    // Only allow editing if complaint is still pending
+    if (complaint.status !== STATUSES.PENDING) {
+      return res.status(400).json({
+        success: false,
+        message: 'You can only edit complaints that are pending.',
+      });
+    }
+
+    // Update the complaint fields
+    complaint.title = title;
+    complaint.description = description;
+    complaint.category = category;
+    complaint.location = location;
+    if (photoUrl !== undefined) {
+      complaint.photoUrl = photoUrl;
+    }
+
+    await complaint.save();
+
+    await recordActivity({
+      userId: req.userId,
+      action: 'update',
+      entityType: 'complaint',
+      entityId: complaint._id,
+      details: 'Citizen updated complaint details',
+    });
+
+    res.json({ success: true, complaint: toClient(complaint) });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function assignComplaint(req, res, next) {
   try {
     const { departmentId, officerId } = req.body;

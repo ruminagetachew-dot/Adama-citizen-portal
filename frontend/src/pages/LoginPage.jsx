@@ -88,8 +88,7 @@ export default function LoginPage() {
   };
 
   const handleForgotPassword = () => {
-    setError('');
-    setInfo(t('auth.forgotPasswordDemo'));
+    navigate('/forgot-password');
   };
 
   return (

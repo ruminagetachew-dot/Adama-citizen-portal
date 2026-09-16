@@ -5,6 +5,7 @@ import {
   listStatusHistories,
   markAllNotificationsRead,
   markNotificationRead,
+  autoMarkNotificationsRead,
 } from '../controllers/notificationController.js';
 import { authenticate, attachUser, authorize } from '../middleware/auth.js';
 import { ROLES } from '../constants/index.js';
@@ -14,6 +15,7 @@ const router = Router();
 router.use(authenticate, attachUser);
 
 router.get('/notifications', listNotifications);
+router.patch('/notifications/auto-read', autoMarkNotificationsRead);
 router.patch('/notifications/read-all', markAllNotificationsRead);
 router.patch('/notifications/:id/read', markNotificationRead);
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { COMPLAINT_CATEGORIES } from '../../constants';
+import { COMPLAINT_CATEGORIES, ADAMA_KEBELES, ADAMA_LANDMARKS } from '../../constants';
 import ImageUpload from '../../components/ImageUpload';
 import SuccessPopup from '../../components/SuccessPopup';
 import AiCitizenAssist from '../../components/ai/AiCitizenAssist';
@@ -20,7 +20,9 @@ export default function NewComplaintPage() {
     title: '',
     description: '',
     category: COMPLAINT_CATEGORIES[0],
-    location: '',
+    kebele: '',
+    landmark: '',
+    specificLocation: '',
     photoUrl: null,
   });
   const [referenceId, setReferenceId] = useState('');
@@ -33,11 +35,15 @@ export default function NewComplaintPage() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      const ref = await submitComplaint(form);
+      // Combine location fields into one string
+      const locationParts = [form.kebele, form.landmark, form.specificLocation].filter(Boolean);
+      const location = locationParts.join(' - ');
+      
+      const ref = await submitComplaint({ ...form, location });
       setError('');
       setReferenceId(ref);
     } catch (err) {
-      setError(err.message || 'Failed to submit complaint.');
+      setError(err.message || t('citizen.submitFailed'));
       setSubmitting(false);
     }
   };
@@ -61,61 +67,94 @@ export default function NewComplaintPage() {
         next.description = s.description;
         nextHighlight.description = true;
       }
-      if (s.category && COMPLAINT_CATEGORIES.includes(s.category) && s.category !== prev.category) {
-        next.category = s.category;
-        nextHighlight.category = true;
-      } else if (s.category && COMPLAINT_CATEGORIES.includes(s.category)) {
-        // Still set explicitly so controlled select stays in sync
+      if (s.category && COMPLAINT_CATEGORIES.includes(s.category)) {
         next.category = s.category;
         nextHighlight.category = true;
       }
       return next;
     });
     setHighlight(nextHighlight);
-    showToast('AI suggestions applied to the form.', 'success');
+    showToast(t('commonApp.aiApplied'), 'success');
     window.setTimeout(() => setHighlight({}), 2200);
   };
 
+  // Build full location string for AI
+  const fullLocation = [form.kebele, form.landmark, form.specificLocation].filter(Boolean).join(' - ');
+
   return (
     <div>
-      <PageHeader title="Submit Complaint" subtitle="Report a problem with municipal services" />
+      <PageHeader
+        title={t('citizen.submitComplaintTitle')}
+        subtitle={t('citizen.submitComplaintSubtitle')}
+      />
 
       {error && <div className="alert alert-error">{error}</div>}
 
       <form className="form-card" onSubmit={handleSubmit} id="ai-form-anchor">
         <label className={highlight.title ? 'ai-field-flash' : undefined}>
-          Title
+          {t('form.title')}
           <div className="ai-field-row">
             <input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               required
-              placeholder="Brief summary of the issue"
+              placeholder={t('form.titlePlaceholder')}
             />
             <VoiceButton onTranscript={appendVoice('title')} />
           </div>
         </label>
-        <label className={highlight.location ? 'ai-field-flash' : undefined}>
-          Location
-          <div className="ai-field-row">
-            <input
-              value={form.location}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
+        
+        <div className="location-group">
+          <label className={highlight.kebele ? 'ai-field-flash' : undefined}>
+            {t('form.kebele')}
+            <select
+              value={form.kebele}
+              onChange={(e) => setForm({ ...form, kebele: e.target.value })}
               required
-              placeholder="Street, kebele, or landmark"
-            />
-            <VoiceButton onTranscript={appendVoice('location')} />
-          </div>
-        </label>
+            >
+              <option value="">{t('form.selectKebele')}</option>
+              {ADAMA_KEBELES.map((kebele) => (
+                <option key={kebele} value={kebele}>{kebele}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className={highlight.landmark ? 'ai-field-flash' : undefined}>
+            {t('form.landmark')}
+            <select
+              value={form.landmark}
+              onChange={(e) => setForm({ ...form, landmark: e.target.value })}
+              required
+            >
+              <option value="">{t('form.selectLandmark')}</option>
+              {ADAMA_LANDMARKS.map((landmark) => (
+                <option key={landmark} value={landmark}>{landmark}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className={highlight.specificLocation ? 'ai-field-flash' : undefined}>
+            {t('form.specificLocation')}
+            <div className="ai-field-row">
+              <input
+                value={form.specificLocation}
+                onChange={(e) => setForm({ ...form, specificLocation: e.target.value })}
+                placeholder={t('form.specificLocationPlaceholder')}
+              />
+              <VoiceButton onTranscript={appendVoice('specificLocation')} />
+            </div>
+          </label>
+        </div>
+
         <label className={highlight.description ? 'ai-field-flash' : undefined}>
-          Description
+          {t('form.description')}
           <div className="ai-field-row">
             <textarea
               rows={5}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               required
-              placeholder="Describe the problem in detail..."
+              placeholder={t('form.descriptionPlaceholder')}
             />
             <VoiceButton onTranscript={appendVoice('description')} />
           </div>
@@ -125,12 +164,12 @@ export default function NewComplaintPage() {
           type="complaint"
           title={form.title}
           description={form.description}
-          location={form.location}
+          location={fullLocation}
           onApply={applyAi}
         />
 
         <label className={highlight.category ? 'ai-field-flash' : undefined}>
-          Category
+          {t('form.category')}
           <select
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -144,23 +183,25 @@ export default function NewComplaintPage() {
         <ImageUpload
           value={form.photoUrl}
           onChange={(photoUrl) => setForm({ ...form, photoUrl })}
-          label="Photo"
+          label={t('form.photo')}
         />
 
         <div className="form-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)}>Cancel</button>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)}>
+            {t('form.cancel')}
+          </button>
           <button type="submit" className="btn btn-primary" disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Submit complaint'}
+            {submitting ? t('form.submitting') : t('citizen.submitComplaint')}
           </button>
         </div>
       </form>
 
       <SuccessPopup
         open={Boolean(referenceId)}
-        title="Complaint submitted"
-        message="Save your reference ID to track this complaint."
+        title={t('citizen.complaintSubmitted')}
+        message={t('citizen.complaintSubmittedMsg')}
         referenceId={referenceId}
-        confirmLabel="View my submissions"
+        confirmLabel={t('citizen.viewSubmissions')}
         onConfirm={() => navigate('/citizen/submissions')}
       />
     </div>

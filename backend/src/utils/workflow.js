@@ -3,6 +3,8 @@ import Notification from '../models/Notification.js';
 import StatusHistory from '../models/StatusHistory.js';
 import User from '../models/User.js';
 import { ROLES } from '../constants/index.js';
+import { sendNotificationEmail } from './emailService.js';
+import { sendNotificationSms } from './smsService.js';
 
 export async function recordStatusHistory({
   entityType,
@@ -30,7 +32,7 @@ export async function createNotification({
   relatedEntityType,
   relatedEntityId,
 }) {
-  return Notification.create({
+  const notification = await Notification.create({
     userId,
     title,
     message,
@@ -39,6 +41,29 @@ export async function createNotification({
     isRead: false,
     createdAt: new Date(),
   });
+
+  // Asynchronously dispatch Email and SMS in the background
+  User.findById(userId)
+    .then((user) => {
+      if (user) {
+        if (user.email) {
+          sendNotificationEmail(user, notification).catch((err) =>
+            console.error('Failed to send notification email:', err)
+          );
+        }
+        if (user.phoneNumber) {
+          const smsText = `Adama Citizen System: ${notification.title} - ${notification.message}`;
+          sendNotificationSms(user, smsText).catch((err) =>
+            console.error('Failed to send notification SMS:', err)
+          );
+        }
+      }
+    })
+    .catch((err) => {
+      console.error('Error fetching user for notification delivery:', err);
+    });
+
+  return notification;
 }
 
 export async function recordActivity({

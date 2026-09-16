@@ -7,7 +7,6 @@ const EMPTY_DATA = {
   users: [],
   departments: [],
   complaints: [],
-  serviceRequests: [],
   notifications: [],
   statusHistories: [],
   activityLogs: [],
@@ -23,11 +22,10 @@ export function AppProvider({ children }) {
     try {
       const isAdmin = user.role === 'admin';
 
-      const [departments, complaints, serviceRequests, notifications, statusHistories, users, activityLogs] =
+      const [departments, complaints, notifications, statusHistories, users, activityLogs] =
         await Promise.all([
           api.get('/departments'),
           api.get('/complaints'),
-          api.get('/service-requests'),
           api.get('/notifications'),
           api.get('/status-histories'),
           isAdmin ? api.get('/users') : Promise.resolve(null),
@@ -37,7 +35,6 @@ export function AppProvider({ children }) {
       setData({
         departments: departments.departments,
         complaints: complaints.complaints,
-        serviceRequests: serviceRequests.serviceRequests,
         notifications: notifications.notifications,
         statusHistories: statusHistories.statusHistories,
         users: users?.users || [],
@@ -113,14 +110,14 @@ export function AppProvider({ children }) {
     return res.referenceId;
   };
 
-  const submitServiceRequest = async (formData) => {
-    const res = await api.post('/service-requests', formData);
+  const updateComplaint = async (id, formData) => {
+    const res = await api.patch(`/complaints/${id}`, formData);
     await refreshData(currentUser);
-    return res.referenceId;
+    return { success: true, complaint: res.complaint };
   };
 
   const assignSubmission = async (type, id, departmentId, officerId = null) => {
-    const base = type === 'complaint' ? '/complaints' : '/service-requests';
+    const base = '/complaints';
     try {
       await api.patch(`${base}/${id}/assign`, { departmentId, officerId });
       await refreshData(currentUser);
@@ -132,7 +129,7 @@ export function AppProvider({ children }) {
   };
 
   const updateSubmissionStatus = async (type, id, status, note = '') => {
-    const base = type === 'complaint' ? '/complaints' : '/service-requests';
+    const base = '/complaints';
     try {
       await api.patch(`${base}/${id}/status`, { status, note });
       await refreshData(currentUser);
@@ -166,6 +163,22 @@ export function AppProvider({ children }) {
       }));
     } catch (err) {
       console.error('Mark all read failed:', err);
+    }
+  };
+
+  const autoMarkNotificationsRead = async () => {
+    try {
+      const result = await api.patch('/notifications/auto-read');
+      if (result.success && result.markedCount > 0) {
+        setData((prev) => ({
+          ...prev,
+          notifications: prev.notifications.map((n) => ({ ...n, isRead: true })),
+        }));
+      }
+      return result;
+    } catch (err) {
+      console.error('Auto mark read failed:', err);
+      return { success: false };
     }
   };
 
@@ -203,11 +216,12 @@ export function AppProvider({ children }) {
     logout,
     updateProfile,
     submitComplaint,
-    submitServiceRequest,
+    updateComplaint,
     assignSubmission,
     updateSubmissionStatus,
     markNotificationRead,
     markAllNotificationsRead,
+    autoMarkNotificationsRead,
     addDepartment,
     toggleUserActive,
   };

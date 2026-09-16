@@ -183,6 +183,19 @@ input:disabled {
   font-weight: 500;
 }
 
+.location-group {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--primary-light);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.location-group label {
+  font-size: 0.86rem;
+}
+
 .form-actions {
   display: flex;
   gap: 0.75rem;

@@ -5,6 +5,7 @@ import SubmissionDetail from '../../components/SubmissionDetail';
 import SubmissionTable from '../../components/SubmissionTable';
 import { STATUSES } from '../../constants';
 import { useApp } from '../../context/AppContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 
 const OPEN_STATUSES = [STATUSES.PENDING, STATUSES.IN_PROGRESS];
@@ -23,11 +24,11 @@ function isOfficerScoped(item, user) {
 }
 
 export default function OfficerDashboard() {
-  const { currentUser, complaints, serviceRequests, departments } = useApp();
+  const { currentUser, complaints, departments } = useApp();
+  const { t } = useLanguage();
 
   const assignedComplaints = complaints.filter((c) => isOfficerScoped(c, currentUser));
-  const assignedRequests = serviceRequests.filter((r) => isOfficerScoped(r, currentUser));
-  const all = [...assignedComplaints, ...assignedRequests];
+  const all = [...assignedComplaints];
   const openCount = all.filter((x) => OPEN_STATUSES.includes(x.status)).length;
   const inProgress = all.filter((x) => x.status === STATUSES.IN_PROGRESS).length;
   const pendingQueue = all.filter((x) => x.status === STATUSES.PENDING).length;
@@ -37,16 +38,18 @@ export default function OfficerDashboard() {
   return (
     <div>
       <PageHeader
-        title="Officer Dashboard"
-        subtitle={`${deptName || 'Department'} — your assigned work overview`}
+        title={t('officer.dashboardTitle')}
+        subtitle={t('officer.dashboardSubtitle', {
+          department: deptName || t('officer.departmentFallback'),
+        })}
       />
 
       <div className="stats-grid">
-        <StatCard label="Open tasks" value={openCount} icon="📋" />
-        <StatCard label="Pending queue" value={pendingQueue} icon="⏳" tone="info" />
-        <StatCard label="In progress" value={inProgress} icon="🔄" tone="info" />
+        <StatCard label={t('officer.openTasks')} value={openCount} icon="📋" />
+        <StatCard label={t('officer.pendingQueue')} value={pendingQueue} icon="⏳" tone="info" />
+        <StatCard label={t('officer.inProgress')} value={inProgress} icon="🔄" tone="info" />
         <StatCard
-          label="Resolved"
+          label={t('officer.resolved')}
           value={all.filter((x) => x.status === STATUSES.RESOLVED).length}
           icon="✅"
           tone="success"
@@ -60,11 +63,11 @@ export function OfficerTasksPage() {
   const {
     currentUser,
     complaints,
-    serviceRequests,
     departments,
     statusHistories,
     updateSubmissionStatus,
   } = useApp();
+  const { t } = useLanguage();
   const [selected, setSelected] = useState(null);
   const [selectedType, setSelectedType] = useState('complaint');
   const [note, setNote] = useState('');
@@ -76,20 +79,17 @@ export function OfficerTasksPage() {
     const c = complaints
       .filter((x) => isOfficerScoped(x, currentUser) && OPEN_STATUSES.includes(x.status))
       .map((x) => ({ ...x, itemType: 'complaint' }));
-    const r = serviceRequests
-      .filter((x) => isOfficerScoped(x, currentUser) && OPEN_STATUSES.includes(x.status))
-      .map((x) => ({ ...x, itemType: 'serviceRequest' }));
-    return [...c, ...r].sort((a, b) => {
+    return c.sort((a, b) => {
       if (a.status === b.status) return 0;
       return a.status === STATUSES.PENDING ? -1 : 1;
     });
-  }, [complaints, serviceRequests, currentUser]);
+  }, [complaints, currentUser]);
 
   const history = selected
     ? statusHistories.filter(
         (h) =>
           h.entityId === selected.id &&
-          h.entityType === (selectedType === 'complaint' ? 'complaint' : 'serviceRequest')
+          h.entityType === 'complaint'
       )
     : [];
 
@@ -106,25 +106,22 @@ export function OfficerTasksPage() {
     const result = await updateSubmissionStatus(selectedType, selected.id, status, note);
     setBusy(false);
     if (!result.success) {
-      setActionError(result.message || 'Update failed.');
+      setActionError(result.message || t('officer.updateFailed'));
       return;
     }
     const labels = {
-      [STATUSES.IN_PROGRESS]: 'Work started successfully.',
-      [STATUSES.RESOLVED]: 'Marked as resolved.',
-      [STATUSES.CLOSED]: 'Task closed successfully.',
+      [STATUSES.IN_PROGRESS]: t('officer.workStarted'),
+      [STATUSES.RESOLVED]: t('officer.markedResolved'),
+      [STATUSES.CLOSED]: t('officer.taskClosed'),
     };
-    showToast(labels[status] || 'Status updated successfully.');
+    showToast(labels[status] || t('officer.statusUpdated'));
     setSelected(null);
     setNote('');
   };
 
   return (
     <div>
-      <PageHeader
-        title="Assigned Tasks"
-        subtitle="Pending department queue and your in-progress work"
-      />
+      <PageHeader title={t('officer.tasksTitle')} subtitle={t('officer.tasksSubtitle')} />
 
       <SubmissionTable
         items={tasks}
@@ -152,7 +149,7 @@ export function OfficerTasksPage() {
                   disabled={busy}
                   onClick={() => runStatus(STATUSES.IN_PROGRESS)}
                 >
-                  Start work
+                  {t('form.startWork')}
                 </button>
               )}
               {selected.status === STATUSES.IN_PROGRESS && (
@@ -164,7 +161,7 @@ export function OfficerTasksPage() {
                     onApply={setNote}
                   />
                   <input
-                    placeholder="Resolution or progress note..."
+                    placeholder={t('form.resolutionProgressNote')}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     className="inline-input"
@@ -175,7 +172,7 @@ export function OfficerTasksPage() {
                     disabled={busy}
                     onClick={() => runStatus(STATUSES.RESOLVED)}
                   >
-                    Mark resolved
+                    {t('form.markResolved')}
                   </button>
                   <button
                     type="button"
@@ -183,7 +180,7 @@ export function OfficerTasksPage() {
                     disabled={busy}
                     onClick={() => runStatus(STATUSES.CLOSED)}
                   >
-                    Close
+                    {t('form.close')}
                   </button>
                 </>
               )}

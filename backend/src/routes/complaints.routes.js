@@ -4,6 +4,7 @@ import {
   assignComplaint,
   createComplaint,
   listComplaints,
+  updateComplaint,
   updateComplaintStatus,
 } from '../controllers/complaintController.js';
 import { upload } from '../controllers/uploadController.js';
@@ -30,6 +31,20 @@ router.post(
   ],
   validate,
   createComplaint
+);
+
+router.patch(
+  '/:id',
+  authorize(ROLES.CITIZEN),
+  [
+    body('title').trim().notEmpty().withMessage('Title is required.'),
+    body('description').trim().notEmpty().withMessage('Description is required.'),
+    body('category').isIn(COMPLAINT_CATEGORIES).withMessage('Invalid category.'),
+    body('location').trim().notEmpty().withMessage('Location is required.'),
+    body('photoUrl').optional(),
+  ],
+  validate,
+  updateComplaint
 );
 
 router.patch(

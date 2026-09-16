@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema(
     phoneNumber: { type: String, default: '' },
     departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null },
     isActive: { type: Boolean, default: true },
+    resetPasswordToken: { type: String, default: null },
+    resetPasswordExpires: { type: Date, default: null },
   },
   { timestamps: true }
 );

@@ -47,6 +47,23 @@ export async function markAllNotificationsRead(req, res, next) {
   }
 }
 
+export async function autoMarkNotificationsRead(req, res, next) {
+  try {
+    // Automatically mark all unread notifications as read when user views the page
+    const result = await Notification.updateMany(
+      { userId: req.userId, isRead: false },
+      { isRead: true }
+    );
+    
+    res.json({ 
+      success: true, 
+      markedCount: result.modifiedCount 
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function listActivityLogs(req, res, next) {
   try {
     const activityLogs = await ActivityLog.find().sort({ createdAt: -1 }).limit(200);
