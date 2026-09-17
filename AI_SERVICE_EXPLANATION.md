@@ -1,14 +1,4 @@
 # AI Service Implementation - Technical Explanation
-
-## Question from Advisor
-**"Is really Express.js is used to implement AI assistant, check it"**
-
-## Answer: YES ✅
-
-Express.js **IS** used to implement the AI Assistant service. Here's the detailed technical explanation:
-
----
-
 ## 1. Architecture Overview
 
 The AI assistance service is implemented as a **separate microservice** using Express.js as the web framework. This service runs independently from the main backend on port 5100.
